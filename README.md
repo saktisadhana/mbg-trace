@@ -11,7 +11,7 @@ Sistem web untuk melacak rantai pasok makanan program Makan Bergizi Gratis (MBG)
 | Database | Digunakan Untuk |
 |----------|----------------|
 | **MySQL** (`sppg_db`) | Data relasional: Supplier, Bahan Makanan, Menu, Sekolah, SPPG (distribusi) |
-| **MongoDB** (`mbg_nosql`) | Laporan Keracunan — dokumen fleksibel dengan investigasi, foto, audit trail |
+| **MongoDB** (`mbg_nosql`) | Laporan Keracunan, dokumen fleksibel dengan investigasi, foto, audit trail |
 
 ---
 
@@ -19,10 +19,10 @@ Sistem web untuk melacak rantai pasok makanan program Makan Bergizi Gratis (MBG)
 
 | Anggota | Tugas | Status |
 |---------|-------|--------|
-| **Sakti** | Setup project Laravel, Koneksi MySQL, Koneksi MongoDB | ✅ Selesai |
-| **Izzar** | Model Supplier, Model Bahan_Makanan, Model Menu | ⬜ |
-| **Dapa** | Model Detail_Menu, Model Sekolah, Model SPPG, Model Laporan_Keracunan | ⬜ |
-| **Nasar** | Endpoint Supplier, Bahan_Makanan, Menu, Sekolah, SPPG, Laporan_Keracunan, Traceability | ⬜ |
+| **Sakti** | Setup project Laravel, Koneksi MySQL, Koneksi MongoDB | Selesai |
+| **Izzar** | Model Supplier, Model Bahan_Makanan, Model Menu | - |
+| **Dapa** | Model Detail_Menu, Model Sekolah, Model SPPG, Model Laporan_Keracunan | - |
+| **Nasar** | Endpoint Supplier, Bahan_Makanan, Menu, Sekolah, SPPG, Laporan_Keracunan, Traceability | - |
 
 ---
 
