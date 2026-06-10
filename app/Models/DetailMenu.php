@@ -7,12 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 class DetailMenu extends Model
 {
     protected $table = 'detail_menu';
+
     public $incrementing = false;
-    
+
     protected $fillable = [
-        'id_menu', 
-        'id_bahan'
-    ]; 
+        'id_menu',
+        'id_bahan',
+        'jumlah_bahan'
+    ];
 
     public function menu()
     {

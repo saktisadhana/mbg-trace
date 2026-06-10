@@ -7,14 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class Sppg extends Model
 {
     protected $table = 'sppg';
+
     protected $primaryKey = 'id_sppg';
-    
+
     protected $fillable = [
-        'id_menu', 
-        'id_sekolah', 
         'tanggal_distribusi',
-        'status'
-    ]; 
+        'jumlah_porsi',
+        'id_menu',
+        'id_sekolah'
+    ];
 
     public function menu()
     {

@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Sekolah extends Model
 {
     protected $table = 'sekolah';
+
     protected $primaryKey = 'id_sekolah';
-    
+
     protected $fillable = [
-        'nama_sekolah', 
-        'alamat',
-        'kontak' 
-    ]; 
+        'nama_sekolah',
+        'alamat'
+    ];
 
     public function sppg()
     {
