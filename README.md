@@ -1,11 +1,8 @@
 # MBG Traceability System
 
-> **Makanan Bergizi Gratis** — Sistem Traceability Rantai Pasok Makanan & Investigasi Keracunan  
-> Stack: **Laravel 11** · **MySQL** · **MongoDB**
-
 ---
 
-## 📋 Deskripsi
+## Deskripsi
 
 Sistem web untuk melacak rantai pasok makanan program Makan Bergizi Gratis (MBG) Indonesia — dari supplier bahan makanan hingga distribusi ke sekolah. Sistem ini juga menangani pelaporan dan investigasi keracunan makanan dengan **reverse traceability**.
 
@@ -18,7 +15,7 @@ Sistem web untuk melacak rantai pasok makanan program Makan Bergizi Gratis (MBG)
 
 ---
 
-## 👥 Pembagian Tugas
+## Pembagian Tugas
 
 | Anggota | Tugas | Status |
 |---------|-------|--------|
@@ -29,7 +26,7 @@ Sistem web untuk melacak rantai pasok makanan program Makan Bergizi Gratis (MBG)
 
 ---
 
-## 🔧 Prerequisites
+## Prerequisites
 
 Pastikan sudah terinstall:
 
@@ -61,7 +58,7 @@ php -m | grep mongodb
 
 ---
 
-## 🚀 Setup & Instalasi
+## Setup & Instalasi
 
 ### 1. Clone & Install Dependencies
 
@@ -115,7 +112,7 @@ php artisan serve
 
 ---
 
-## 🗄️ Database Schema
+## Database Schema
 
 ### MySQL Tables (6 tabel)
 
@@ -138,7 +135,7 @@ Migration sudah tersedia di `database/migrations/`:
 
 ---
 
-## 📂 Struktur Proyek
+## Struktur Proyek
 
 ```
 mbg-trace/
@@ -176,7 +173,7 @@ mbg-trace/
 
 ---
 
-## 📋 Panduan Per Anggota
+## Panduan Per Anggota
 
 ### Izzar — Models (MySQL)
 
@@ -265,7 +262,7 @@ Cross-DB join **tidak dilakukan di SQL** — resolusi manual di `TraceabilitySer
 
 ---
 
-## ⚠️ Aturan Penting
+## Aturan Penting
 
 1. **MySQL models** extend `Illuminate\Database\Eloquent\Model`
 2. **MongoDB model** extend `MongoDB\Laravel\Eloquent\Model` + set `$connection = 'mongodb'`
@@ -275,13 +272,6 @@ Cross-DB join **tidak dilakukan di SQL** — resolusi manual di `TraceabilitySer
 
 ---
 
-## 📮 Testing dengan Postman
+## Testing dengan Postman
 
 Import file `MBG_Traceability.postman_collection.json` ke Postman untuk testing semua endpoint.
-
----
-
-## 👥 Tim
-
-**Kelompok 2 — IDE SBD**  
-*Program Makan Bergizi Gratis — Traceability System*
