@@ -333,3 +333,5 @@ SELECT
 FROM bahan_makanan bm
     JOIN supplier s ON bm.id_supplier = s.id_supplier
 WHERE bm.tanggal_kadaluarsa <= DATE_ADD(CURDATE(), INTERVAL 7 DAY);
+
+ -- rtestararaa
