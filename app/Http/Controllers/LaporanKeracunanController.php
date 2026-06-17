@@ -2,66 +2,125 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\LaporanKeracunan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LaporanKeracunanController extends Controller
 {
+    private function collection()
+    {
+        return DB::connection('mongodb')->collection('laporan_keracunan');
+    }
+
     public function index()
     {
-        return response()->json(LaporanKeracunan::all());
+        $items = $this->collection()->get();
+
+        $sppgIds = $items->pluck('id_sppg')->filter()->unique();
+        $sekolahIds = $items->pluck('id_sekolah')->filter()->unique();
+
+        $sppgs = DB::table('sppg')
+            ->whereIn('id_sppg', $sppgIds)->get()->keyBy('id_sppg');
+        $sekolahs = DB::table('sekolah')
+            ->whereIn('id_sekolah', $sekolahIds)->get()->keyBy('id_sekolah');
+
+        foreach ($items as $item) {
+            $item->sppg = $sppgs->get($item->id_sppg);
+            $item->sekolah = $sekolahs->get($item->id_sekolah);
+        }
+
+        return response()->json($items);
     }
 
     public function store(Request $request)
     {
-        $laporan = LaporanKeracunan::create($request->all());
+        $data = $request->validate([
+            'id_laporan'         => 'nullable|string',
+            'tanggal_laporan'    => 'required|date',
+            'jumlah_korban'      => 'required|integer',
+            'deskripsi'          => 'required|string',
+            'id_sekolah'         => 'required|integer',
+            'id_sppg'            => 'required|integer',
+            'detail_investigasi' => 'nullable|string',
+            'dokumentasi'        => 'nullable|string',
+            'riwayat_audit'      => 'nullable|array',
+        ]);
+
+        $id = $this->collection()->insertGetId($data);
+        $laporan = $this->collection()->where('_id', $id)->first();
+
         return response()->json($laporan, 201);
     }
 
     public function show($id)
     {
-        $laporan = LaporanKeracunan::findOrFail($id);
+        $laporan = $this->collection()->where('_id', $id)->first();
+        if (!$laporan) {
+            return response()->json(['message' => 'Laporan tidak ditemukan'], 404);
+        }
+
+        if (isset($laporan->id_sppg)) {
+            $laporan->sppg = DB::table('sppg')
+                ->where('id_sppg', $laporan->id_sppg)->first();
+        }
+        if (isset($laporan->id_sekolah)) {
+            $laporan->sekolah = DB::table('sekolah')
+                ->where('id_sekolah', $laporan->id_sekolah)->first();
+        }
+
         return response()->json($laporan);
     }
 
     public function update(Request $request, $id)
     {
-        $laporan = LaporanKeracunan::findOrFail($id);
-        $data = $request->all();
-
-        // Handle riwayat_audit append
-        if (isset($data['riwayat_audit'])) {
-            $riwayatBaru = $data['riwayat_audit'];
-            unset($data['riwayat_audit']); // Remove from bulk assignment
-
-            $riwayatLama = $laporan->riwayat_audit ?? [];
-            if (!is_array($riwayatLama)) {
-                $riwayatLama = [$riwayatLama];
-            }
-
-            if (is_array($riwayatBaru)) {
-                // If the new audit is an array of entries, merge them. 
-                // Alternatively, if it's a single entry that is an array itself, we append.
-                // Assuming $riwayatBaru is a single entry (string or associative array) for simplicity:
-                $riwayatLama[] = $riwayatBaru;
-            } else {
-                $riwayatLama[] = $riwayatBaru;
-            }
-
-            $laporan->riwayat_audit = $riwayatLama;
+        $laporan = $this->collection()->where('_id', $id)->first();
+        if (!$laporan) {
+            return response()->json(['message' => 'Laporan tidak ditemukan'], 404);
         }
 
-        $laporan->fill($data);
-        $laporan->save();
+        $data = $request->validate([
+            'tanggal_laporan'    => 'sometimes|required|date',
+            'jumlah_korban'      => 'sometimes|required|integer',
+            'deskripsi'          => 'sometimes|required|string',
+            'id_sekolah'         => 'sometimes|required|integer',
+            'id_sppg'            => 'sometimes|required|integer',
+            'detail_investigasi' => 'nullable|string',
+            'dokumentasi'        => 'nullable|string',
+            'riwayat_audit'      => 'nullable',
+        ]);
+
+        if ($request->has('riwayat_audit')) {
+            $newAudit = $request->input('riwayat_audit');
+            $existingAudit = $laporan->riwayat_audit ?? [];
+
+            if (!is_array($existingAudit)) {
+                $existingAudit = [$existingAudit];
+            }
+
+            if (is_array($newAudit) && !isset($newAudit[0])) {
+                $existingAudit[] = $newAudit;
+            } elseif (is_array($newAudit)) {
+                $existingAudit = array_merge($existingAudit, $newAudit);
+            } else {
+                $existingAudit[] = $newAudit;
+            }
+
+            $data['riwayat_audit'] = $existingAudit;
+        }
+
+        $this->collection()->where('_id', $id)->update($data);
+        $laporan = $this->collection()->where('_id', $id)->first();
 
         return response()->json($laporan);
     }
 
     public function destroy($id)
     {
-        $laporan = LaporanKeracunan::findOrFail($id);
-        $laporan->delete();
+        $deleted = $this->collection()->where('_id', $id)->delete();
+        if (!$deleted) {
+            return response()->json(['message' => 'Laporan tidak ditemukan'], 404);
+        }
 
-        return response()->json(null, 204);
+        return response()->json(['message' => 'Laporan Keracunan berhasil dihapus']);
     }
 }

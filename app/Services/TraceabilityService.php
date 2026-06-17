@@ -2,55 +2,88 @@
 
 namespace App\Services;
 
-use App\Models\LaporanKeracunan;
-use App\Models\Sppg;
-use App\Models\Supplier;
+use Illuminate\Support\Facades\DB;
 
 class TraceabilityService
 {
     public function traceFromReport($id_laporan)
     {
-        // 1. Ambil LaporanKeracunan (MongoDB) -> dapatkan id_sppg
-        $laporan = LaporanKeracunan::findOrFail($id_laporan);
+        $laporan = DB::connection('mongodb')
+            ->collection('laporan_keracunan')
+            ->where('_id', $id_laporan)
+            ->first();
+
+        if (!$laporan) {
+            throw new \Exception('Laporan keracunan tidak ditemukan');
+        }
+
         $id_sppg = $laporan->id_sppg;
 
-        // 2. Cari SPPG di MySQL beserta relasinya (Menu -> Bahan Makanan -> Supplier)
-        $sppg = Sppg::with([
-            'sekolah',
-            'menu.bahanMakanan.supplier'
-        ])->find($id_sppg);
+        $sppg = DB::table('sppg')->where('id_sppg', $id_sppg)->first();
+        if (!$sppg) {
+            throw new \Exception('Data SPPG tidak ditemukan');
+        }
+
+        $sppg->sekolah = DB::table('sekolah')
+            ->where('id_sekolah', $sppg->id_sekolah)->first();
+
+        $menu = DB::table('menu')->where('id_menu', $sppg->id_menu)->first();
+
+        if ($menu) {
+            $bahanList = DB::table('detail_menu')
+                ->join('bahan_makanan', 'detail_menu.id_bahan', '=', 'bahan_makanan.id_bahan')
+                ->where('detail_menu.id_menu', $menu->id_menu)
+                ->select('bahan_makanan.*', 'detail_menu.jumlah_bahan')
+                ->get();
+
+            $supplierIds = $bahanList->pluck('id_supplier')->unique();
+            $suppliers = DB::table('supplier')
+                ->whereIn('id_supplier', $supplierIds)
+                ->get()
+                ->keyBy('id_supplier');
+
+            foreach ($bahanList as $bahan) {
+                $bahan->supplier = $suppliers->get($bahan->id_supplier);
+            }
+
+            $menu->bahan_makanan = $bahanList;
+        }
+
+        $sppg->menu = $menu;
 
         return [
             'laporan' => $laporan,
-            'trace_sppg' => $sppg
+            'trace'   => $sppg,
         ];
     }
 
     public function traceFromSupplier($id_supplier)
     {
-        // 1. Cari semua SPPG yang menggunakan bahan dari supplier tersebut (MySQL)
-        $supplier = Supplier::with('bahanMakanan.menu.sppg')->findOrFail($id_supplier);
-
-        $id_sppg_list = [];
-
-        foreach ($supplier->bahanMakanan as $bahan) {
-            foreach ($bahan->menu as $menu) {
-                foreach ($menu->sppg as $sppg) {
-                    $id_sppg_list[] = $sppg->id_sppg;
-                }
-            }
+        $supplier = DB::table('supplier')->where('id_supplier', $id_supplier)->first();
+        if (!$supplier) {
+            throw new \Exception('Supplier tidak ditemukan');
         }
 
-        // Dapatkan kumpulan id_sppg yang unik
-        $id_sppg_list = array_values(array_unique($id_sppg_list));
+        $supplier->bahan_makanan = DB::table('bahan_makanan')
+            ->where('id_supplier', $id_supplier)->get();
 
-        // 2. Cari LaporanKeracunan di MongoDB dengan whereIn('id_sppg', [...])
-        $laporan = LaporanKeracunan::whereIn('id_sppg', $id_sppg_list)->get();
+        $sppgIds = DB::table('sppg')
+            ->join('detail_menu', 'sppg.id_menu', '=', 'detail_menu.id_menu')
+            ->join('bahan_makanan', 'detail_menu.id_bahan', '=', 'bahan_makanan.id_bahan')
+            ->where('bahan_makanan.id_supplier', $id_supplier)
+            ->distinct()
+            ->pluck('sppg.id_sppg')
+            ->toArray();
+
+        $laporan = DB::connection('mongodb')
+            ->collection('laporan_keracunan')
+            ->whereIn('id_sppg', $sppgIds)
+            ->get();
 
         return [
-            'supplier' => $supplier,
-            'affected_sppg_ids' => $id_sppg_list,
-            'laporan_keracunan' => $laporan
+            'supplier'           => $supplier,
+            'terdampak_sppg_ids' => $sppgIds,
+            'laporan_keracunan'  => $laporan,
         ];
     }
 }

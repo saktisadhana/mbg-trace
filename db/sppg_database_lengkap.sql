@@ -142,3 +142,196 @@ INSERT INTO sppg (id_sppg, tanggal_distribusi, jumlah_porsi, alamat_sppg, id_men
 (3, '2026-06-03 07:00:00', 600, 'Dapur MBG Surabaya Timur',   3, 3),
 (4, '2026-06-04 07:00:00', 550, 'Dapur MBG Surabaya Timur',   1, 4),
 (5, '2026-06-05 07:00:00', 700, 'Dapur MBG Surabaya Selatan', 2, 5);
+
+-- =====================================================
+-- BAGIAN 4: KOLOM TAMBAHAN PENDUKUNG TRIGGER
+-- Kolom-kolom ini diperlukan agar trigger bisa berfungsi
+-- =====================================================
+
+-- Tambah kolom status_distribusi di tabel sppg
+ALTER TABLE sppg
+    ADD COLUMN status_distribusi ENUM('diproses','dikirim','diterima')
+    DEFAULT 'diproses' AFTER alamat_sppg;
+
+-- Tambah kolom created_at di semua tabel untuk jejak audit
+ALTER TABLE supplier       ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE bahan_makanan  ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE menu           ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE detail_menu    ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE sekolah        ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE sppg           ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+-- Tabel log untuk mencatat perubahan status distribusi (audit trail)
+CREATE TABLE log_distribusi (
+    id_log         INT AUTO_INCREMENT PRIMARY KEY,
+    id_sppg        INT NOT NULL,
+    status_lama    ENUM('diproses','dikirim','diterima'),
+    status_baru    ENUM('diproses','dikirim','diterima'),
+    waktu_perubahan DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (id_sppg)
+        REFERENCES sppg(id_sppg)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB;
+
+-- =====================================================
+-- BAGIAN 5: TRIGGER
+-- =====================================================
+
+-- -------------------------------------------------
+-- TRIGGER 1: trg_validasi_detail_menu
+-- Tabel  : detail_menu (BEFORE INSERT)
+-- Tujuan : 1) Cek bahan tidak boleh kadaluarsa
+--             → mencegah keracunan makanan
+--          2) Cek jumlah_bahan harus > 0
+--             → validasi data input
+-- -------------------------------------------------
+DELIMITER //
+
+CREATE TRIGGER trg_validasi_detail_menu
+BEFORE INSERT ON detail_menu
+FOR EACH ROW
+BEGIN
+    DECLARE v_tgl_exp DATE;
+    DECLARE v_nama    VARCHAR(100);
+
+    -- Validasi 1: jumlah_bahan harus lebih dari 0
+    IF NEW.jumlah_bahan IS NULL OR NEW.jumlah_bahan <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'DITOLAK: jumlah_bahan harus lebih dari 0.';
+    END IF;
+
+    -- Validasi 2: bahan tidak boleh sudah kadaluarsa
+    SELECT tanggal_kadaluarsa, nama_bahan
+    INTO v_tgl_exp, v_nama
+    FROM bahan_makanan
+    WHERE id_bahan = NEW.id_bahan;
+
+    IF v_tgl_exp IS NOT NULL AND v_tgl_exp < CURDATE() THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = CONCAT(
+            'DITOLAK: Bahan "', v_nama,
+            '" sudah kadaluarsa sejak ', v_tgl_exp,
+            '. Tidak boleh digunakan dalam menu.'
+        );
+    END IF;
+END //
+
+DELIMITER ;
+
+-- -------------------------------------------------
+-- TRIGGER 2: trg_validasi_sppg_insert
+-- Tabel  : sppg (BEFORE INSERT)
+-- Tujuan : 1) Cek jumlah_porsi harus > 0
+--             → validasi distribusi
+--          2) Cek tanggal_distribusi tidak boleh masa lalu
+--             → mencegah data distribusi tidak valid
+-- -------------------------------------------------
+DELIMITER //
+
+CREATE TRIGGER trg_validasi_sppg_insert
+BEFORE INSERT ON sppg
+FOR EACH ROW
+BEGIN
+    -- Validasi 1: jumlah porsi harus lebih dari 0
+    IF NEW.jumlah_porsi IS NULL OR NEW.jumlah_porsi <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'DITOLAK: jumlah_porsi harus lebih dari 0.';
+    END IF;
+
+    -- Validasi 2: tanggal distribusi tidak boleh di masa lalu
+    IF NEW.tanggal_distribusi IS NOT NULL
+       AND DATE(NEW.tanggal_distribusi) < CURDATE() THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'DITOLAK: tanggal_distribusi tidak boleh di masa lalu.';
+    END IF;
+END //
+
+DELIMITER ;
+
+-- -------------------------------------------------
+-- TRIGGER 3: trg_validasi_sppg_update
+-- Tabel  : sppg (BEFORE UPDATE)
+-- Tujuan : Cek jumlah_porsi tetap valid saat di-update
+-- -------------------------------------------------
+DELIMITER //
+
+CREATE TRIGGER trg_validasi_sppg_update
+BEFORE UPDATE ON sppg
+FOR EACH ROW
+BEGIN
+    IF NEW.jumlah_porsi IS NULL OR NEW.jumlah_porsi <= 0 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'DITOLAK: jumlah_porsi harus lebih dari 0.';
+    END IF;
+END //
+
+DELIMITER ;
+
+-- -------------------------------------------------
+-- TRIGGER 4: trg_log_status_distribusi
+-- Tabel  : sppg (AFTER UPDATE)
+-- Tujuan : Mencatat setiap perubahan status distribusi
+--          ke tabel log_distribusi sebagai audit trail
+--          → menjawab masalah Transparansi & Distribusi
+-- -------------------------------------------------
+DELIMITER //
+
+CREATE TRIGGER trg_log_status_distribusi
+AFTER UPDATE ON sppg
+FOR EACH ROW
+BEGIN
+    IF OLD.status_distribusi <> NEW.status_distribusi THEN
+        INSERT INTO log_distribusi (id_sppg, status_lama, status_baru, waktu_perubahan)
+        VALUES (NEW.id_sppg, OLD.status_distribusi, NEW.status_distribusi, NOW());
+    END IF;
+END //
+
+DELIMITER ;
+
+-- =====================================================
+-- BAGIAN 6: VIEW TRACEABILITY
+-- =====================================================
+
+-- View lengkap: trace dari distribusi -> menu -> bahan -> supplier
+CREATE VIEW v_traceability_lengkap AS
+SELECT
+    sp.id_sppg,
+    sp.tanggal_distribusi,
+    sp.jumlah_porsi,
+    sp.status_distribusi,
+    sk.nama_sekolah,
+    sk.alamat            AS alamat_sekolah,
+    m.nama_menu,
+    m.tanggal_produksi,
+    bm.nama_bahan,
+    bm.tanggal_kadaluarsa,
+    dm.jumlah_bahan,
+    s.nama_supplier,
+    s.no_telp            AS telp_supplier
+FROM sppg sp
+    JOIN sekolah sk       ON sp.id_sekolah = sk.id_sekolah
+    JOIN menu m           ON sp.id_menu    = m.id_menu
+    JOIN detail_menu dm   ON m.id_menu     = dm.id_menu
+    JOIN bahan_makanan bm ON dm.id_bahan   = bm.id_bahan
+    JOIN supplier s       ON bm.id_supplier = s.id_supplier;
+
+-- View bahan yang sudah / hampir kadaluarsa (7 hari ke depan)
+CREATE VIEW v_bahan_hampir_kadaluarsa AS
+SELECT
+    bm.id_bahan,
+    bm.nama_bahan,
+    bm.tanggal_kadaluarsa,
+    s.nama_supplier,
+    s.no_telp,
+    CASE
+        WHEN bm.tanggal_kadaluarsa < CURDATE()
+            THEN 'SUDAH KADALUARSA'
+        WHEN bm.tanggal_kadaluarsa <= DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+            THEN 'HAMPIR KADALUARSA'
+    END AS status_kadaluarsa
+FROM bahan_makanan bm
+    JOIN supplier s ON bm.id_supplier = s.id_supplier
+WHERE bm.tanggal_kadaluarsa <= DATE_ADD(CURDATE(), INTERVAL 7 DAY);
+
+ -- rtestararaa
