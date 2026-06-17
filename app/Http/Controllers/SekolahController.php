@@ -8,7 +8,7 @@ class SekolahController extends Controller
 {
     public function index()
     {
-        return response()->json(Sekolah::all());
+        return response()->json(Sekolah::getAll());
     }
 
     public function store(Request $request)
@@ -17,28 +17,40 @@ class SekolahController extends Controller
             'nama_sekolah' => 'required|string|max:100',
             'alamat'       => 'nullable|string',
         ]);
-        return response()->json(Sekolah::create($data), 201);
+        $sekolah = Sekolah::create($data);
+        return response()->json($sekolah, 201);
     }
 
     public function show($id)
     {
-        return response()->json(Sekolah::with('sppg')->findOrFail($id));
+        $sekolah = Sekolah::getByIdWithSppg($id);
+        if (!$sekolah) {
+            return response()->json(['message' => 'Sekolah not found'], 404);
+        }
+        return response()->json($sekolah);
     }
 
     public function update(Request $request, $id)
     {
-        $sekolah = Sekolah::findOrFail($id);
+        $sekolah = Sekolah::getById($id);
+        if (!$sekolah) {
+            return response()->json(['message' => 'Sekolah not found'], 404);
+        }
         $data = $request->validate([
             'nama_sekolah' => 'sometimes|required|string|max:100',
             'alamat'       => 'nullable|string',
         ]);
-        $sekolah->update($data);
-        return response()->json($sekolah);
+        $updated = Sekolah::update($id, $data);
+        return response()->json($updated);
     }
 
     public function destroy($id)
     {
-        Sekolah::findOrFail($id)->delete();
-        return response()->json(['message' => 'Sekolah dihapus']);
+        $sekolah = Sekolah::getById($id);
+        if (!$sekolah) {
+            return response()->json(['message' => 'Sekolah not found'], 404);
+        }
+        Sekolah::delete($id);
+        return response()->json(['message' => 'Sekolah deleted']);
     }
 }

@@ -2,33 +2,66 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
-class Menu extends Model
+class Menu 
 {
-    protected $table = 'menu';
-
-    protected $primaryKey = 'id_menu';
-
-    public $timestamps = false;
-
-    protected $fillable = [
-        'nama_menu',
-        'tanggal_produksi'
-    ];
-
-    public function bahanMakanan()
+    public static function getAll()
     {
-        return $this->belongsToMany(
-            BahanMakanan::class,
-            'detail_menu',
-            'id_menu',
-            'id_bahan'
-        )->withPivot('jumlah_bahan');
+        return DB::select('SELECT * FROM menu');
     }
 
-    public function sppg()
+    public static function getWithBahan()
     {
-        return $this->hasMany(Sppg::class, 'id_menu');
+        return DB::select("
+            SELECT m.id_menu, m.nama_menu, m.tanggal_produksi, 
+                   b.nama_bahan, dm.jumlah_bahan 
+            FROM menu m
+            LEFT JOIN detail_menu dm ON m.id_menu = dm.id_menu
+            LEFT JOIN bahan_makanan b ON dm.id_bahan = b.id_bahan
+        ");
+    }
+
+    public static function getById($id)
+    {
+        $result = DB::select('SELECT * FROM menu WHERE id_menu = ?', [$id]);
+        return count($result) > 0 ? $result[0] : null;
+    }
+
+    public static function getByIdWithBahan($id)
+    {
+        $result = DB::select("
+            SELECT m.id_menu, m.nama_menu, m.tanggal_produksi, 
+                   b.id_bahan, b.nama_bahan, dm.jumlah_bahan 
+            FROM menu m
+            LEFT JOIN detail_menu dm ON m.id_menu = dm.id_menu
+            LEFT JOIN bahan_makanan b ON dm.id_bahan = b.id_bahan
+            WHERE m.id_menu = ?
+        ", [$id]);
+        return $result;
+    }
+
+    public static function create($data)
+    {
+        DB::insert('INSERT INTO menu (nama_menu, tanggal_produksi, created_at, updated_at) VALUES (?, ?, NOW(), NOW())', [
+            $data['nama_menu'] ?? null,
+            $data['tanggal_produksi'] ?? null
+        ]);
+        return DB::select('SELECT * FROM menu WHERE id_menu = LAST_INSERT_ID()')[0] ?? null;
+    }
+
+    public static function update($id, $data)
+    {
+        DB::update('UPDATE menu SET nama_menu = ?, tanggal_produksi = ?, updated_at = NOW() WHERE id_menu = ?', [
+            $data['nama_menu'] ?? null,
+            $data['tanggal_produksi'] ?? null,
+            $id
+        ]);
+        return self::getById($id);
+    }
+
+    public static function delete($id)
+    {
+        return DB::delete('DELETE FROM menu WHERE id_menu = ?', [$id]) > 0;
     }
 }

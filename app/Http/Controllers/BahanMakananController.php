@@ -8,7 +8,7 @@ class BahanMakananController extends Controller
 {
     public function index()
     {
-        return response()->json(BahanMakanan::with('supplier')->get());
+        return response()->json(BahanMakanan::getWithSupplier());
     }
 
     public function store(Request $request)
@@ -18,29 +18,41 @@ class BahanMakananController extends Controller
             'tanggal_kadaluarsa' => 'nullable|date',
             'id_supplier'        => 'required|exists:supplier,id_supplier',
         ]);
-        return response()->json(BahanMakanan::create($data), 201);
+        $bahan = BahanMakanan::create($data);
+        return response()->json($bahan, 201);
     }
 
     public function show($id)
     {
-        return response()->json(BahanMakanan::with('supplier')->findOrFail($id));
+        $bahan = BahanMakanan::getByIdWithSupplier($id);
+        if (!$bahan) {
+            return response()->json(['message' => 'Bahan makanan not found'], 404);
+        }
+        return response()->json($bahan);
     }
 
     public function update(Request $request, $id)
     {
-        $bahan = BahanMakanan::findOrFail($id);
+        $bahan = BahanMakanan::getById($id);
+        if (!$bahan) {
+            return response()->json(['message' => 'Bahan makanan not found'], 404);
+        }
         $data = $request->validate([
             'nama_bahan'         => 'sometimes|required|string|max:100',
             'tanggal_kadaluarsa' => 'nullable|date',
             'id_supplier'        => 'sometimes|required|exists:supplier,id_supplier',
         ]);
-        $bahan->update($data);
-        return response()->json($bahan);
+        $updated = BahanMakanan::update($id, $data);
+        return response()->json($updated);
     }
 
     public function destroy($id)
     {
-        BahanMakanan::findOrFail($id)->delete();
-        return response()->json(['message' => 'Bahan makanan dihapus']);
+        $bahan = BahanMakanan::getById($id);
+        if (!$bahan) {
+            return response()->json(['message' => 'Bahan makanan not found'], 404);
+        }
+        BahanMakanan::delete($id);
+        return response()->json(['message' => 'Bahan makanan deleted']);
     }
 }

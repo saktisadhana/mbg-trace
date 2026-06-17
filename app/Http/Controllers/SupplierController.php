@@ -8,7 +8,7 @@ class SupplierController extends Controller
 {
     public function index()
     {
-        return response()->json(Supplier::all());
+        return response()->json(Supplier::getAll());
     }
 
     public function store(Request $request)
@@ -18,29 +18,41 @@ class SupplierController extends Controller
             'alamat'        => 'nullable|string',
             'no_telp'       => 'nullable|string|max:20',
         ]);
-        return response()->json(Supplier::create($data), 201);
+        $supplier = Supplier::create($data);
+        return response()->json($supplier, 201);
     }
 
     public function show($id)
     {
-        return response()->json(Supplier::with('bahan')->findOrFail($id));
+        $supplier = Supplier::getByIdWithBahan($id);
+        if (!$supplier) {
+            return response()->json(['message' => 'Supplier not found'], 404);
+        }
+        return response()->json($supplier);
     }
 
     public function update(Request $request, $id)
     {
-        $supplier = Supplier::findOrFail($id);
+        $supplier = Supplier::getById($id);
+        if (!$supplier) {
+            return response()->json(['message' => 'Supplier not found'], 404);
+        }
         $data = $request->validate([
             'nama_supplier' => 'sometimes|required|string|max:100',
             'alamat'        => 'nullable|string',
             'no_telp'       => 'nullable|string|max:20',
         ]);
-        $supplier->update($data);
-        return response()->json($supplier);
+        $updated = Supplier::update($id, $data);
+        return response()->json($updated);
     }
 
     public function destroy($id)
     {
-        Supplier::findOrFail($id)->delete();
-        return response()->json(['message' => 'Supplier dihapus']);
+        $supplier = Supplier::getById($id);
+        if (!$supplier) {
+            return response()->json(['message' => 'Supplier not found'], 404);
+        }
+        Supplier::delete($id);
+        return response()->json(['message' => 'Supplier deleted']);
     }
 }

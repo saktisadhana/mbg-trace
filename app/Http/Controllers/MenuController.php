@@ -8,7 +8,7 @@ class MenuController extends Controller
 {
     public function index()
     {
-        return response()->json(Menu::all());
+        return response()->json(Menu::getWithBahan());
     }
 
     public function store(Request $request)
@@ -17,28 +17,40 @@ class MenuController extends Controller
             'nama_menu'        => 'required|string|max:100',
             'tanggal_produksi' => 'nullable|date',
         ]);
-        return response()->json(Menu::create($data), 201);
+        $menu = Menu::create($data);
+        return response()->json($menu, 201);
     }
 
     public function show($id)
     {
-        return response()->json(Menu::with('bahan')->findOrFail($id));
+        $menu = Menu::getByIdWithBahan($id);
+        if (!$menu) {
+            return response()->json(['message' => 'Menu not found'], 404);
+        }
+        return response()->json($menu);
     }
 
     public function update(Request $request, $id)
     {
-        $menu = Menu::findOrFail($id);
+        $menu = Menu::getById($id);
+        if (!$menu) {
+            return response()->json(['message' => 'Menu not found'], 404);
+        }
         $data = $request->validate([
             'nama_menu'        => 'sometimes|required|string|max:100',
             'tanggal_produksi' => 'nullable|date',
         ]);
-        $menu->update($data);
-        return response()->json($menu);
+        $updated = Menu::update($id, $data);
+        return response()->json($updated);
     }
 
     public function destroy($id)
     {
-        Menu::findOrFail($id)->delete();
-        return response()->json(['message' => 'Menu dihapus']);
+        $menu = Menu::getById($id);
+        if (!$menu) {
+            return response()->json(['message' => 'Menu not found'], 404);
+        }
+        Menu::delete($id);
+        return response()->json(['message' => 'Menu deleted']);
     }
 }
