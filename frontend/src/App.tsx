@@ -43,14 +43,12 @@ export default function App() {
   const [dashboardStats, setDashboardStats] = useState({ suppliers: 0, bahan: 0, sekolah: 0, menu: 0 });
 
   const [laporanList, setLaporanList] = useState<any[]>([]);
-  const [sekolahList, setSekolahList] = useState<any[]>([]);
   const [sppgList, setSppgList] = useState<any[]>([]);
 
   const [formJudul, setFormJudul] = useState('');
   const [formIsi, setFormIsi] = useState('');
   const [formTanggal, setFormTanggal] = useState('');
   const [formJumlahKorban, setFormJumlahKorban] = useState('');
-  const [formIdSekolah, setFormIdSekolah] = useState('');
   const [formIdSppg, setFormIdSppg] = useState('');
 
   const [email, setEmail] = useState('');
@@ -106,12 +104,11 @@ export default function App() {
         tanggal_laporan: formTanggal,
         jumlah_korban: parseInt(formJumlahKorban) || 0,
         deskripsi: formIsi,
-        id_sekolah: parseInt(formIdSekolah),
         id_sppg: parseInt(formIdSppg),
       });
       alert('Laporan berhasil dikirim ke database!');
       setFormJudul(''); setFormIsi(''); setFormTanggal('');
-      setFormJumlahKorban(''); setFormIdSekolah(''); setFormIdSppg('');
+      setFormJumlahKorban(''); setFormIdSppg('');
       setActiveSidebar('track_laporan');
       api.get('/laporan-keracunan').then(res => setLaporanList(res.data)).catch(() => {});
     } catch {
@@ -130,7 +127,6 @@ export default function App() {
       Promise.all([api.get('/suppliers'), api.get('/bahan-makanan'), api.get('/sekolah'), api.get('/menu')])
         .then(([sRes, bRes, skRes, mRes]) => {
           setDashboardStats({ suppliers: sRes.data.length, bahan: bRes.data.length, sekolah: skRes.data.length, menu: mRes.data.length });
-          setSekolahList(skRes.data);
         }).catch(() => {});
       api.get('/sppg').then(res => setSppgList(res.data)).catch(() => {});
       api.get('/laporan-keracunan').then(res => setLaporanList(res.data)).catch(() => {});
@@ -175,24 +171,23 @@ export default function App() {
                     <input type="date" value={formTanggal} onChange={(e) => setFormTanggal(e.target.value)} className="w-full border border-gray-300 rounded-lg p-3 outline-none" required />
                   </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">Jumlah Korban <span className="text-red-500">*</span></label>
                     <input type="number" min="0" value={formJumlahKorban} onChange={(e) => setFormJumlahKorban(e.target.value)} placeholder="0" className="w-full border border-gray-300 rounded-lg p-3 outline-none" required />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">Sekolah <span className="text-red-500">*</span></label>
-                    <select value={formIdSekolah} onChange={(e) => setFormIdSekolah(e.target.value)} className="w-full border border-gray-300 rounded-lg p-3 outline-none bg-white" required>
-                      <option value="" disabled>Pilih Sekolah</option>
-                      {sekolahList.map((s: any) => <option key={s.id_sekolah} value={s.id_sekolah}>{s.nama_sekolah}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-800 mb-2">SPPG Terkait <span className="text-red-500">*</span></label>
+                    <label className="block text-sm font-semibold text-gray-800 mb-2">Distribusi (SPPG) Terkait <span className="text-red-500">*</span></label>
                     <select value={formIdSppg} onChange={(e) => setFormIdSppg(e.target.value)} className="w-full border border-gray-300 rounded-lg p-3 outline-none bg-white" required>
                       <option value="" disabled>Pilih Distribusi</option>
-                      {sppgList.map((sp: any) => <option key={sp.id_sppg} value={sp.id_sppg}>{sp.menu?.nama_menu || 'Menu'} → {sp.sekolah?.nama_sekolah || 'Sekolah'}</option>)}
+                      {sppgList.map((sp: any) => <option key={sp.id_sppg} value={sp.id_sppg}>{sp.menu?.nama_menu || 'Menu'} → {sp.sekolah?.nama_sekolah || 'Sekolah'} ({sp.tanggal_distribusi?.substring(0, 10)})</option>)}
                     </select>
+                    {formIdSppg && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        Sekolah: <span className="font-semibold text-gray-700">{sppgList.find((sp: any) => String(sp.id_sppg) === String(formIdSppg))?.sekolah?.nama_sekolah || '-'}</span>
+                        <span className="text-gray-400"> (otomatis dari SPPG)</span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>

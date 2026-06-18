@@ -16,17 +16,20 @@ class LaporanKeracunanController extends Controller
     {
         $items = $this->collection()->get();
 
+        // Per ERD: laporan_keracunan hanya punya FK id_sppg.
+        // Sekolah diturunkan lewat relasi sppg -> sekolah.
         $sppgIds = $items->pluck('id_sppg')->filter()->unique();
-        $sekolahIds = $items->pluck('id_sekolah')->filter()->unique();
-
         $sppgs = DB::table('sppg')
             ->whereIn('id_sppg', $sppgIds)->get()->keyBy('id_sppg');
+
+        $sekolahIds = $sppgs->pluck('id_sekolah')->unique();
         $sekolahs = DB::table('sekolah')
             ->whereIn('id_sekolah', $sekolahIds)->get()->keyBy('id_sekolah');
 
         foreach ($items as $item) {
-            $item->sppg    = $sppgs->get($item->id_sppg);
-            $item->sekolah = $sekolahs->get($item->id_sekolah);
+            $sppg = $sppgs->get($item->id_sppg);
+            $item->sppg    = $sppg;
+            $item->sekolah = $sppg ? $sekolahs->get($sppg->id_sekolah) : null;
         }
 
         return response()->json($items);
@@ -39,7 +42,6 @@ class LaporanKeracunanController extends Controller
             'tanggal_laporan'    => 'required|date',
             'jumlah_korban'      => 'required|integer|min:0',
             'deskripsi'          => 'required|string',
-            'id_sekolah'         => 'required|integer',
             'id_sppg'            => 'required|integer',
             'detail_investigasi' => 'nullable|string',
             'dokumentasi'        => 'nullable|string',
@@ -59,13 +61,13 @@ class LaporanKeracunanController extends Controller
             return response()->json(['message' => 'Laporan tidak ditemukan'], 404);
         }
 
+        // Per ERD: sekolah diturunkan lewat relasi sppg -> sekolah.
         if (isset($laporan->id_sppg)) {
-            $laporan->sppg = DB::table('sppg')
-                ->where('id_sppg', $laporan->id_sppg)->first();
-        }
-        if (isset($laporan->id_sekolah)) {
-            $laporan->sekolah = DB::table('sekolah')
-                ->where('id_sekolah', $laporan->id_sekolah)->first();
+            $sppg = DB::table('sppg')->where('id_sppg', $laporan->id_sppg)->first();
+            $laporan->sppg = $sppg;
+            $laporan->sekolah = $sppg
+                ? DB::table('sekolah')->where('id_sekolah', $sppg->id_sekolah)->first()
+                : null;
         }
 
         return response()->json($laporan);
@@ -82,7 +84,6 @@ class LaporanKeracunanController extends Controller
             'tanggal_laporan'    => 'sometimes|required|date',
             'jumlah_korban'      => 'sometimes|required|integer|min:0',
             'deskripsi'          => 'sometimes|required|string',
-            'id_sekolah'         => 'sometimes|required|integer',
             'id_sppg'            => 'sometimes|required|integer',
             'detail_investigasi' => 'nullable|string',
             'dokumentasi'        => 'nullable|string',
