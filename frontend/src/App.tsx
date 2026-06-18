@@ -179,8 +179,8 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">Distribusi (SPPG) Terkait <span className="text-red-500">*</span></label>
                     <select value={formIdSppg} onChange={(e) => setFormIdSppg(e.target.value)} className="w-full border border-gray-300 rounded-lg p-3 outline-none bg-white" required>
-                      <option value="" disabled>Pilih Distribusi</option>
-                      {sppgList.map((sp: any) => <option key={sp.id_sppg} value={sp.id_sppg}>{sp.menu?.nama_menu || 'Menu'} → {sp.sekolah?.nama_sekolah || 'Sekolah'} ({sp.tanggal_distribusi?.substring(0, 10)})</option>)}
+                      <option value="" disabled>Pilih SPPG</option>
+                      {sppgList.map((sp: any) => <option key={sp.id_sppg} value={sp.id_sppg}>[ID: {sp.id_sppg}] {sp.menu?.nama_menu || 'Menu'} → {sp.sekolah?.nama_sekolah || 'Sekolah'}</option>)}
                     </select>
                     {formIdSppg && (
                       <p className="text-xs text-gray-500 mt-2">
