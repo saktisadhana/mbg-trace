@@ -25,7 +25,7 @@ class LaporanKeracunanController extends Controller
             ->whereIn('id_sekolah', $sekolahIds)->get()->keyBy('id_sekolah');
 
         foreach ($items as $item) {
-            $item->sppg = $sppgs->get($item->id_sppg);
+            $item->sppg    = $sppgs->get($item->id_sppg);
             $item->sekolah = $sekolahs->get($item->id_sekolah);
         }
 
@@ -37,7 +37,7 @@ class LaporanKeracunanController extends Controller
         $data = $request->validate([
             'id_laporan'         => 'nullable|string',
             'tanggal_laporan'    => 'required|date',
-            'jumlah_korban'      => 'required|integer',
+            'jumlah_korban'      => 'required|integer|min:0',
             'deskripsi'          => 'required|string',
             'id_sekolah'         => 'required|integer',
             'id_sppg'            => 'required|integer',
@@ -46,7 +46,7 @@ class LaporanKeracunanController extends Controller
             'riwayat_audit'      => 'nullable|array',
         ]);
 
-        $id = $this->collection()->insertGetId($data);
+        $id      = $this->collection()->insertGetId($data);
         $laporan = $this->collection()->where('_id', $id)->first();
 
         return response()->json($laporan, 201);
@@ -80,7 +80,7 @@ class LaporanKeracunanController extends Controller
 
         $data = $request->validate([
             'tanggal_laporan'    => 'sometimes|required|date',
-            'jumlah_korban'      => 'sometimes|required|integer',
+            'jumlah_korban'      => 'sometimes|required|integer|min:0',
             'deskripsi'          => 'sometimes|required|string',
             'id_sekolah'         => 'sometimes|required|integer',
             'id_sppg'            => 'sometimes|required|integer',
@@ -90,7 +90,7 @@ class LaporanKeracunanController extends Controller
         ]);
 
         if ($request->has('riwayat_audit')) {
-            $newAudit = $request->input('riwayat_audit');
+            $newAudit      = $request->input('riwayat_audit');
             $existingAudit = $laporan->riwayat_audit ?? [];
 
             if (!is_array($existingAudit)) {
