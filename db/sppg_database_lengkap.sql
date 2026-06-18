@@ -194,6 +194,7 @@ FOR EACH ROW
 BEGIN
     DECLARE v_tgl_exp DATE;
     DECLARE v_nama    VARCHAR(100);
+    DECLARE v_msg     VARCHAR(500);
 
     -- Validasi 1: jumlah_bahan harus lebih dari 0
     IF NEW.jumlah_bahan IS NULL OR NEW.jumlah_bahan <= 0 THEN
@@ -208,12 +209,13 @@ BEGIN
     WHERE id_bahan = NEW.id_bahan;
 
     IF v_tgl_exp IS NOT NULL AND v_tgl_exp < CURDATE() THEN
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = CONCAT(
+        SET v_msg = CONCAT(
             'DITOLAK: Bahan "', v_nama,
             '" sudah kadaluarsa sejak ', v_tgl_exp,
             '. Tidak boleh digunakan dalam menu.'
         );
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = v_msg;
     END IF;
 END //
 
