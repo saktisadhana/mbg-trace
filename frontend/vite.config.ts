@@ -7,6 +7,8 @@ export default defineConfig(({ command }) => ({
   base: command === 'build' ? '/mbg-trace/' : '/',
   plugins: [react()],
   server: {
+    // Allow access via Cloudflare quick-tunnel hostnames for public demos
+    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
