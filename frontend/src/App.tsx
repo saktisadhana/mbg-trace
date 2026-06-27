@@ -32,6 +32,7 @@ import Sekolah from './pages/Sekolah';
 import Distribusi from './pages/Distribusi';
 import TraceabilityPage from './pages/Traceability';
 import api from './api/axiosConfig';
+import { supabase } from './api/supabase';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('landing');
@@ -56,42 +57,38 @@ export default function App() {
 
   const isSchool = loggedInUser?.email?.endsWith('.id');
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    const isEmailTaken = registeredUsers.some((user: any) => user.email === email);
-    if (isEmailTaken) {
-      alert("Email sudah terdaftar!");
-      return;
-    }
-    setRegisteredUsers([...registeredUsers, { email, password }]);
-    alert("Pendaftaran berhasil! Silakan masuk.");
-    setEmail('');
-    setPassword('');
-    setCurrentView('login');
-  };
-
-  const handleLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (email === "admin@sekolah.id" && password === "password") {
-        setLoggedInUser({ email: "admin@sekolah.id" });
-        setCurrentView('dashboard');
-        setActiveSidebar('dashboard');
-        return;
-    }
-    if (email === "admin@pangan.com" && password === "password") {
-        setLoggedInUser({ email: "admin@pangan.com" });
-        setCurrentView('dashboard');
-        setActiveSidebar('dashboard');
-        return;
-    }
-    const validUser = registeredUsers.find((user: any) => user.email === email && user.password === password);
-    if (validUser) {
-      setLoggedInUser(validUser);
-      setCurrentView('dashboard');
-      setActiveSidebar('dashboard');
+    try {
+      const { error } = await supabase.rpc('register_user', { p_email: email, p_password: password });
+      if (error) throw error;
+      alert("Pendaftaran berhasil! Silakan masuk.");
       setEmail('');
       setPassword('');
-    } else {
+      setCurrentView('login');
+    } catch (err: any) {
+      const msg = err?.message || '';
+      alert(msg.includes('sudah terdaftar') ? "Email sudah terdaftar!"
+          : msg.includes('minimal') ? "Password minimal 6 karakter."
+          : "Pendaftaran gagal. Coba lagi.");
+    }
+  };
+
+  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const { data, error } = await supabase.rpc('login_user', { p_email: email, p_password: password });
+      if (error) throw error;
+      if (data) {
+        setLoggedInUser({ email: (data as any).email });
+        setCurrentView('dashboard');
+        setActiveSidebar('dashboard');
+        setEmail('');
+        setPassword('');
+      } else {
+        alert("Email atau password salah.");
+      }
+    } catch {
       alert("Email atau password salah.");
     }
   };
