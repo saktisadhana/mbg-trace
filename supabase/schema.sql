@@ -82,6 +82,15 @@ create table if not exists laporan_keracunan (
 );
 
 -- ---------- SEED DATA ----------
+-- Drop validation triggers first so the (intentionally past-dated) seed rows
+-- load cleanly. They're (re)created after the seed. Makes this script
+-- safely re-runnable. NOTE: ON CONFLICT still fires BEFORE INSERT triggers,
+-- which is why a re-run would otherwise be blocked by the past-date check.
+drop trigger if exists trg_validasi_detail_menu on detail_menu;
+drop trigger if exists trg_validasi_sppg_insert on sppg;
+drop trigger if exists trg_validasi_sppg_update on sppg;
+drop trigger if exists trg_log_status_distribusi on sppg;
+
 insert into supplier (id_supplier, nama_supplier, alamat, no_telp) values
 (1,'PT Beras Nusantara','Surabaya','081111111111'),
 (2,'PT Ayam Sehat','Sidoarjo','082222222222'),
