@@ -1,133 +1,106 @@
-# Deploying MBG Traceability
+# Deploying MBG Traceability (free stack)
 
-Architecture:
+Architecture — all free, no credit card:
 
 ```
 GitHub Pages  ─►  React frontend (static)
                      │  HTTPS → VITE_API_URL
                      ▼
-Fly.io        ─►  Laravel API  (Dockerfile, PHP 8.2 + ext-mongodb)
-                     ├─► Fly.io MySQL app   (sppg_db, private network)
-                     └─► MongoDB Atlas      (mbg_nosql.laporan_keracunan)
+Render        ─►  Laravel API  (Dockerfile, PHP 8.2 + ext-mongodb)
+                     ├─► Aiven MySQL   (sppg_db, TLS required)
+                     └─► MongoDB Atlas (mbg_nosql.laporan_keracunan)
 ```
 
-The Laravel cross-DB SQL↔NoSQL logic is unchanged — only hosting + env config.
+The Laravel cross-DB SQL↔NoSQL code is unchanged — only hosting + env config.
+
+> Trade-off: Render's free service **spins down after ~15 min idle**, so the first
+> request after a nap takes ~50s, then it's fast again. Fine for a demo.
+
+> The old Fly.io files (`fly.toml`, `deploy/mysql/`) are kept as a paid alternative.
 
 ---
 
-## 0. One-time tooling
-
-```bash
-# Fly CLI
-curl -L https://fly.io/install.sh | sh      # or: iwr https://fly.io/install.ps1 -useb | iex  (PowerShell)
-fly auth signup        # or: fly auth login
-# GitHub CLI (optional) + a MongoDB Atlas account (atlas.mongodb.com)
-```
-
----
-
-## 1. MongoDB Atlas (NoSQL side)
+## 1. MongoDB Atlas (NoSQL side) — free M0
 
 1. Create a **free M0 cluster** (region near Singapore).
 2. **Database Access** → add a user (e.g. `mbg` / strong password).
-3. **Network Access** → allow `0.0.0.0/0` (Fly egress IPs vary).
+3. **Network Access** → allow `0.0.0.0/0` (Render egress IPs vary).
 4. Copy the **SRV connection string**:
    `mongodb+srv://mbg:<pw>@cluster0.xxxx.mongodb.net/?retryWrites=true&w=majority`
-5. Seed the collection from the repo:
-   ```bash
-   mongoimport --uri "<SRV_URI>" --db mbg_nosql --collection laporan_keracunan \
-     --file db/laporan_keracunan.json --jsonArray
+5. Seed the collection (you have `mongosh`):
+   ```powershell
+   $docs = Get-Content -Raw db/laporan_keracunan.json
+   mongosh "<SRV_URI>/mbg_nosql" --eval "db.laporan_keracunan.insertMany($docs)"
    ```
 
 ---
 
-## 2. MySQL on Fly (SQL side) — private app
+## 2. Aiven MySQL (SQL side) — free plan
 
-```bash
-fly apps create mbg-trace-mysql
-fly volume create mysql_data -a mbg-trace-mysql -r sin -n 1 --size 1
-fly secrets set -a mbg-trace-mysql \
-    MYSQL_ROOT_PASSWORD=<root_pw> \
-    MYSQL_DATABASE=sppg_db \
-    MYSQL_USER=mbg \
-    MYSQL_PASSWORD=<app_pw>
-fly deploy -c deploy/mysql/fly.toml
-```
-
-**Import the schema** (the .sql has CRLF line endings that break `DELIMITER //`, so strip them first — same gotcha as local XAMPP):
-
-```bash
-# Terminal A — tunnel the private MySQL to localhost
-fly proxy 3306 -a mbg-trace-mysql
-
-# Terminal B — strip CR and import (use the XAMPP client or any mysql client)
-sed 's/\r//' db/sppg_database_lengkap.sql > /tmp/schema.sql
-"C:/xampp/mysql/bin/mysql.exe" -h 127.0.0.1 -P 3306 -u root -p sppg_db < /tmp/schema.sql
-```
+1. Create an Aiven account → **Create service → MySQL → Free plan** (region near
+   Singapore). Wait until it's *Running*.
+2. From the service **Overview → Connection information**, note: **Host, Port,
+   User** (`avnadmin`), **Password**, and download the **CA certificate** (`ca.pem`).
+3. Save that cert in the repo as **`certs/aiven-ca.pem`** and commit it
+   (a CA cert is public, not a secret) — see [certs/README.md](certs/README.md).
+4. **Import the schema** (run in **Git Bash** so `<` redirection works):
+   ```bash
+   "C:/xampp/mysql/bin/mysql.exe" --ssl-ca=certs/aiven-ca.pem \
+       -h <AIVEN_HOST> -P <PORT> -u avnadmin -p \
+       < db/sppg_database_lengkap.unix.sql
+   ```
+   The script runs `CREATE DATABASE sppg_db` itself, so nothing else is needed.
 
 ---
 
-## 3. Laravel API on Fly
+## 3. Render (Laravel API)
 
+1. Push this repo to GitHub (already done).
+2. Render dashboard → **New + → Blueprint** → pick `saktisadhana/mbg-trace`.
+   Render reads [render.yaml](render.yaml) and creates the `mbg-trace-api` service.
+3. When prompted, set the **secret** env vars:
+
+   | Key | Value |
+   |-----|-------|
+   | `APP_KEY` | generate one: `C:\xampp\php\php.exe artisan key:generate --show` → paste the `base64:...` output (do **not** commit it) |
+   | `DB_HOST` | Aiven host |
+   | `DB_PORT` | Aiven port |
+   | `DB_USERNAME` | `avnadmin` |
+   | `DB_PASSWORD` | Aiven password |
+   | `MONGODB_URI` | your Atlas SRV string |
+
+   (`DB_DATABASE=sppg_db`, `MYSQL_ATTR_SSL_CA`, CORS, etc. are already in the blueprint.)
+4. Render builds the Dockerfile and deploys. Your API URL will be
+   `https://mbg-trace-api.onrender.com`.
+
+**Smoke test** (first call may take ~50s if the service was asleep):
 ```bash
-# Create the app WITHOUT generating a new fly.toml (we already have one)
-fly apps create mbg-trace-api
-
-# Reuse the APP_KEY from your local .env (or: php artisan key:generate --show)
-fly secrets set -a mbg-trace-api \
-    APP_KEY="base64:JZQuPrRJWphxG9avv6wYtK8oIiw+vFmChQWCZlnUMiU=" \
-    DB_USERNAME=mbg \
-    DB_PASSWORD=<app_pw> \
-    MONGODB_URI="<SRV_URI>"
-
-fly deploy
+curl https://mbg-trace-api.onrender.com/api/suppliers          # MySQL path
+curl https://mbg-trace-api.onrender.com/api/laporan-keracunan  # Mongo + cross-DB join
 ```
 
-The non-secret env (DB_HOST=`mbg-trace-mysql.internal`, DB_DATABASE, MONGODB_DATABASE, etc.) is already in [fly.toml](fly.toml).
-
-**Smoke test:**
-```bash
-curl https://mbg-trace-api.fly.dev/api/suppliers          # MySQL path
-curl https://mbg-trace-api.fly.dev/api/laporan-keracunan  # Mongo + cross-DB join
-```
-
-If the API name differs from `mbg-trace-api`, update:
-- [frontend/.env.production](frontend/.env.production) → `VITE_API_URL`
-- `CORS_ALLOWED_ORIGINS` secret (below) stays the same (it's the *frontend* origin).
+> If your Render service name isn't `mbg-trace-api`, update `VITE_API_URL` in
+> [frontend/.env.production](frontend/.env.production) and the origin in
+> [config/cors.php](config/cors.php) stays the same (it's the *frontend* origin).
 
 ---
 
-## 4. CORS (allow the Pages origin)
+## 4. Frontend on GitHub Pages
 
-Default allowed origins are baked into [config/cors.php](config/cors.php)
-(`https://saktisadhana.github.io` + localhost). To change without editing code:
-
-```bash
-fly secrets set -a mbg-trace-api \
-    CORS_ALLOWED_ORIGINS="https://saktisadhana.github.io,http://localhost:5173"
-```
-
----
-
-## 5. Frontend on GitHub Pages
-
-1. In the GitHub repo: **Settings → Pages → Build and deployment → Source = GitHub Actions**.
-2. Make sure [frontend/.env.production](frontend/.env.production) points at your API.
-3. Push to `main`. The [workflow](.github/workflows/deploy-pages.yml) builds and deploys automatically.
-4. Site goes live at **https://saktisadhana.github.io/mbg-trace/**
-
-> The Vite `base` is set to `/mbg-trace/` for production builds — if you rename the
-> repo, update `base` in [frontend/vite.config.ts](frontend/vite.config.ts).
+1. GitHub repo → **Settings → Pages → Build and deployment → Source = GitHub Actions**.
+2. [frontend/.env.production](frontend/.env.production) already points at the Render URL.
+3. Push to `main` → the [workflow](.github/workflows/deploy-pages.yml) builds & deploys.
+4. Live at **https://saktisadhana.github.io/mbg-trace/**
 
 ---
 
 ## Notes & gotchas
 
-- **Cold starts:** the API scales to zero (`min_machines_running = 0`) and wakes on
-  first request (~1–2s). Set it to `1` in [fly.toml](fly.toml) to keep it always-on.
-- **MySQL is private** — no public port. Use `fly proxy` to reach it for imports/admin.
+- **Cold starts** — Render free spins down when idle; first hit ~50s. Upgrade the
+  Render plan (paid) to keep it always-on if needed.
 - **ext-mongodb** is compiled into the image via `pecl install mongodb` in the
-  [Dockerfile](Dockerfile) — this replaces your hand-installed `php_mongodb.dll`.
-- **Local dev is unchanged:** `VITE_API_URL` is empty locally, so Vite proxies
+  [Dockerfile](Dockerfile) — replaces your local hand-installed `php_mongodb.dll`.
+- **Aiven TLS** — both the running app and the import use `certs/aiven-ca.pem`.
+- **Local dev is unchanged** — `VITE_API_URL` is empty locally, so Vite proxies
   `/api` → `localhost:8000` exactly as before.
 ```

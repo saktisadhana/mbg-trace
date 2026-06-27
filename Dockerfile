@@ -37,4 +37,10 @@ COPY . .
 RUN composer dump-autoload --optimize --no-dev --no-scripts \
     && chown -R www-data:www-data storage bootstrap/cache
 
+# Apache binds to $PORT at runtime (Render sets it; Fly/local default to 80)
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 80
+CMD ["/usr/local/bin/docker-entrypoint.sh"]
