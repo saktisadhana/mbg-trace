@@ -24,7 +24,7 @@ const Distribusi: React.FC = () => {
     e.preventDefault(); setIsSubmitting(true);
     const payload = { tanggal_distribusi: formData.tanggal_distribusi || null, jumlah_porsi: formData.jumlah_porsi ? parseInt(formData.jumlah_porsi) : null, alamat_sppg: formData.alamat_sppg || null, id_menu: parseInt(formData.id_menu), id_sekolah: parseInt(formData.id_sekolah) };
     try { if (editing) { await api.put(`/sppg/${editing.id_sppg}`, payload); } else { await api.post('/sppg', payload); } setIsModalOpen(false); fetchData(); }
-    catch { alert('Gagal menyimpan.'); } finally { setIsSubmitting(false); }
+    catch (err: any) { alert(err?.response?.data?.message || 'Gagal menyimpan.'); } finally { setIsSubmitting(false); }
   };
   const handleDelete = async (id: number) => {
     if (window.confirm('Hapus distribusi ini?')) { try { await api.delete(`/sppg/${id}`); setSppgs(sppgs.filter(s => s.id_sppg !== id)); } catch { alert('Gagal menghapus.'); } }
@@ -60,7 +60,7 @@ const Distribusi: React.FC = () => {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? 'Edit Distribusi' : 'Tambah Distribusi'}>
         <form onSubmit={handleSubmit}>
           <FormInput label="Tanggal Distribusi" type="date" value={formData.tanggal_distribusi} onChange={(e) => setFormData({...formData, tanggal_distribusi: e.target.value})} />
-          <FormInput label="Jumlah Porsi" type="number" value={formData.jumlah_porsi} onChange={(e) => setFormData({...formData, jumlah_porsi: e.target.value})} placeholder="350" />
+          <FormInput label="Jumlah Porsi" type="number" required min={1} value={formData.jumlah_porsi} onChange={(e) => setFormData({...formData, jumlah_porsi: e.target.value})} placeholder="350" />
           <FormInput label="Alamat SPPG" isTextArea value={formData.alamat_sppg} onChange={(e) => setFormData({...formData, alamat_sppg: e.target.value})} placeholder="Lokasi dapur" />
           <div className="mb-4"><label className="block text-sm font-medium text-gray-700 mb-1">Menu</label>
             <select className="w-full px-4 py-2 border border-gray-300 rounded-lg outline-none" value={formData.id_menu} onChange={(e) => setFormData({...formData, id_menu: e.target.value})} required>

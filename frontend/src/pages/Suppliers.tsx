@@ -41,7 +41,7 @@ const Suppliers: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('Hapus supplier ini?')) {
       try { await api.delete(`/suppliers/${id}`); setSuppliers(suppliers.filter(s => s.id_supplier !== id)); }
-      catch { alert('Gagal menghapus.'); }
+      catch (e: any) { alert(e?.response?.data?.message || 'Gagal menghapus.'); }
     }
   };
 

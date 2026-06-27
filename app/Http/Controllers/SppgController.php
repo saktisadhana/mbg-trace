@@ -29,9 +29,11 @@ class SppgController extends Controller
 
     public function store(Request $request)
     {
+        // Must match the DB triggers (trg_validasi_sppg_insert):
+        // jumlah_porsi > 0 and tanggal_distribusi cannot be in the past.
         $data = $request->validate([
-            'tanggal_distribusi' => 'nullable|date',
-            'jumlah_porsi'       => 'nullable|integer',
+            'tanggal_distribusi' => 'nullable|date|after_or_equal:today',
+            'jumlah_porsi'       => 'required|integer|min:1',
             'alamat_sppg'        => 'nullable|string',
             'id_menu'            => 'required|exists:menu,id_menu',
             'id_sekolah'         => 'required|exists:sekolah,id_sekolah',
@@ -67,9 +69,10 @@ class SppgController extends Controller
             return response()->json(['message' => 'Data SPPG tidak ditemukan'], 404);
         }
 
+        // trg_validasi_sppg_update also enforces jumlah_porsi > 0.
         $data = $request->validate([
             'tanggal_distribusi' => 'nullable|date',
-            'jumlah_porsi'       => 'nullable|integer',
+            'jumlah_porsi'       => 'required|integer|min:1',
             'alamat_sppg'        => 'nullable|string',
             'id_menu'            => 'sometimes|required|exists:menu,id_menu',
             'id_sekolah'         => 'sometimes|required|exists:sekolah,id_sekolah',

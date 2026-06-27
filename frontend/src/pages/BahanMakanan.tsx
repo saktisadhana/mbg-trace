@@ -43,7 +43,7 @@ const BahanMakananPage: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Hapus bahan makanan ini?')) {
-      try { await api.delete(`/bahan-makanan/${id}`); setBahan(bahan.filter(b => b.id_bahan !== id)); } catch { alert('Gagal menghapus.'); }
+      try { await api.delete(`/bahan-makanan/${id}`); setBahan(bahan.filter(b => b.id_bahan !== id)); } catch (e: any) { alert(e?.response?.data?.message || 'Gagal menghapus.'); }
     }
   };
 

@@ -61,9 +61,16 @@ class SekolahController extends Controller
 
     public function destroy($id)
     {
-        $deleted = DB::table('sekolah')->where('id_sekolah', $id)->delete();
-        if (!$deleted) {
+        if (!DB::table('sekolah')->where('id_sekolah', $id)->exists()) {
             return response()->json(['message' => 'Sekolah tidak ditemukan'], 404);
+        }
+
+        try {
+            DB::table('sekolah')->where('id_sekolah', $id)->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'message' => 'Sekolah tidak bisa dihapus karena masih memiliki data distribusi (SPPG).'
+            ], 409);
         }
 
         return response()->json(['message' => 'Sekolah dihapus']);

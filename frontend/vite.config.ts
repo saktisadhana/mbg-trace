@@ -1,7 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig({
+// Project GitHub Pages serves from https://<user>.github.io/mbg-trace/,
+// so assets must be requested under that sub-path in production.
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/mbg-trace/' : '/',
   plugins: [react()],
   server: {
     proxy: {
@@ -11,4 +14,4 @@ export default defineConfig({
       }
     }
   }
-})
+}))

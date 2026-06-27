@@ -75,9 +75,16 @@ class BahanMakananController extends Controller
 
     public function destroy($id)
     {
-        $deleted = DB::table('bahan_makanan')->where('id_bahan', $id)->delete();
-        if (!$deleted) {
+        if (!DB::table('bahan_makanan')->where('id_bahan', $id)->exists()) {
             return response()->json(['message' => 'Bahan makanan tidak ditemukan'], 404);
+        }
+
+        try {
+            DB::table('bahan_makanan')->where('id_bahan', $id)->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'message' => 'Bahan makanan tidak bisa dihapus karena masih digunakan dalam menu.'
+            ], 409);
         }
 
         return response()->json(['message' => 'Bahan makanan dihapus']);

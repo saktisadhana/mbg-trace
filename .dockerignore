@@ -1,0 +1,16 @@
+# Build inside the image instead of copying local artifacts
+/vendor
+/node_modules
+/frontend
+/.git
+/.github
+.env
+.env.*
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+Dockerfile
+.dockerignore
+DEPLOY.md
+/deploy

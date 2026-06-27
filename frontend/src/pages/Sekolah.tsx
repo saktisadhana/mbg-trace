@@ -26,7 +26,7 @@ const Sekolah: React.FC = () => {
     catch { alert('Gagal menyimpan.'); } finally { setIsSubmitting(false); }
   };
   const handleDelete = async (id: number) => {
-    if (window.confirm('Hapus sekolah ini?')) { try { await api.delete(`/sekolah/${id}`); setSekolahs(sekolahs.filter(s => s.id_sekolah !== id)); } catch { alert('Gagal menghapus.'); } }
+    if (window.confirm('Hapus sekolah ini?')) { try { await api.delete(`/sekolah/${id}`); setSekolahs(sekolahs.filter(s => s.id_sekolah !== id)); } catch (e: any) { alert(e?.response?.data?.message || 'Gagal menghapus.'); } }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="animate-spin text-blue-600" size={48} /></div>;

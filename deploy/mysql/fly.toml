@@ -1,0 +1,23 @@
+# Fly.io config — MySQL 8 for the relational side (sppg_db).
+# This app is PRIVATE: no public port. The API reaches it over Fly's
+# 6PN private network at  mbg-trace-mysql.internal:3306.
+#
+# Deploy from this folder:
+#   fly apps create mbg-trace-mysql
+#   fly volume create mysql_data -a mbg-trace-mysql -r sin -n 1 --size 1
+#   fly secrets set -a mbg-trace-mysql MYSQL_ROOT_PASSWORD=... \
+#         MYSQL_DATABASE=sppg_db MYSQL_USER=mbg MYSQL_PASSWORD=...
+#   fly deploy -c deploy/mysql/fly.toml
+app = "mbg-trace-mysql"
+primary_region = "sin"
+
+[build]
+  image = "mysql:8.0"
+
+[mounts]
+  source = "mysql_data"
+  destination = "/var/lib/mysql"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

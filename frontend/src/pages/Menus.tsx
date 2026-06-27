@@ -40,7 +40,7 @@ const MenuPage: React.FC<MenusProps> = ({ onReport }) => {
 
   const handleDelete = async (id: number) => {
     if (window.confirm('Hapus menu ini?')) {
-      try { await api.delete(`/menu/${id}`); setMenus(menus.filter(m => m.id_menu !== id)); } catch { alert('Gagal menghapus.'); }
+      try { await api.delete(`/menu/${id}`); setMenus(menus.filter(m => m.id_menu !== id)); } catch (e: any) { alert(e?.response?.data?.message || 'Gagal menghapus.'); }
     }
   };
 

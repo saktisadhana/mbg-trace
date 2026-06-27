@@ -56,7 +56,9 @@ class LaporanKeracunanController extends Controller
 
     public function show($id)
     {
-        $laporan = $this->collection()->where('_id', $id)->first();
+        // Accept either the human-readable id_laporan or the raw Mongo _id.
+        $laporan = $this->collection()->where('id_laporan', $id)->first()
+            ?? $this->collection()->where('_id', $id)->first();
         if (!$laporan) {
             return response()->json(['message' => 'Laporan tidak ditemukan'], 404);
         }

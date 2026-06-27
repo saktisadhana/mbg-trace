@@ -8,10 +8,19 @@ class TraceabilityService
 {
     public function traceFromReport($id_laporan)
     {
+        // Users search by the human-readable id_laporan (e.g. "LAP-001"),
+        // but fall back to the raw Mongo _id for completeness.
         $laporan = DB::connection('mongodb')
             ->table('laporan_keracunan')
-            ->where('_id', $id_laporan)
+            ->where('id_laporan', $id_laporan)
             ->first();
+
+        if (!$laporan) {
+            $laporan = DB::connection('mongodb')
+                ->table('laporan_keracunan')
+                ->where('_id', $id_laporan)
+                ->first();
+        }
 
         if (!$laporan) {
             throw new \Exception('Laporan keracunan tidak ditemukan');

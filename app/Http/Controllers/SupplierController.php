@@ -63,9 +63,16 @@ class SupplierController extends Controller
 
     public function destroy($id)
     {
-        $deleted = DB::table('supplier')->where('id_supplier', $id)->delete();
-        if (!$deleted) {
+        if (!DB::table('supplier')->where('id_supplier', $id)->exists()) {
             return response()->json(['message' => 'Supplier tidak ditemukan'], 404);
+        }
+
+        try {
+            DB::table('supplier')->where('id_supplier', $id)->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'message' => 'Supplier tidak bisa dihapus karena masih memiliki bahan makanan terkait.'
+            ], 409);
         }
 
         return response()->json(['message' => 'Supplier dihapus']);

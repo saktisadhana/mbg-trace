@@ -1,0 +1,30 @@
+# Fly.io config — Laravel API (the SQL <-> NoSQL core).
+# Deploy: fly deploy   (after `fly launch --no-deploy` creates the app)
+app = "mbg-trace-api"
+primary_region = "sin"   # Singapore — closest Fly region to Indonesia
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  APP_ENV = "production"
+  APP_DEBUG = "false"
+  LOG_CHANNEL = "stderr"          # logs stream to `fly logs`
+  DB_CONNECTION = "mysql"
+  DB_HOST = "mbg-trace-mysql.internal"   # private 6PN DNS of the MySQL app
+  DB_PORT = "3306"
+  DB_DATABASE = "sppg_db"
+  MONGODB_DATABASE = "mbg_nosql"
+  # Secrets (set via `fly secrets set`, NOT here):
+  #   APP_KEY, DB_USERNAME, DB_PASSWORD, MONGODB_URI
+
+[http_service]
+  internal_port = 80
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0        # scales to zero when idle (free-friendly)
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

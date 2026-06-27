@@ -72,13 +72,13 @@ export default function App() {
 
   const handleLoginSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (registeredUsers.length === 0 && email === "admin@sekolah.id" && password === "password") {
+    if (email === "admin@sekolah.id" && password === "password") {
         setLoggedInUser({ email: "admin@sekolah.id" });
         setCurrentView('dashboard');
         setActiveSidebar('dashboard');
         return;
     }
-    if (registeredUsers.length === 0 && email === "admin@pangan.com" && password === "password") {
+    if (email === "admin@pangan.com" && password === "password") {
         setLoggedInUser({ email: "admin@pangan.com" });
         setCurrentView('dashboard');
         setActiveSidebar('dashboard');

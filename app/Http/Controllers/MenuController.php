@@ -64,9 +64,16 @@ class MenuController extends Controller
 
     public function destroy($id)
     {
-        $deleted = DB::table('menu')->where('id_menu', $id)->delete();
-        if (!$deleted) {
+        if (!DB::table('menu')->where('id_menu', $id)->exists()) {
             return response()->json(['message' => 'Menu tidak ditemukan'], 404);
+        }
+
+        try {
+            DB::table('menu')->where('id_menu', $id)->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return response()->json([
+                'message' => 'Menu tidak bisa dihapus karena masih dipakai pada detail menu atau distribusi (SPPG).'
+            ], 409);
         }
 
         return response()->json(['message' => 'Menu dihapus']);
